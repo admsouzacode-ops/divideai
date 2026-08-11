@@ -1,0 +1,110 @@
+// Paga Juntos - Schema PostgreSQL
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  isPro         Boolean   @default(false)
+  proExpiresAt  DateTime?
+  avatarUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessionsCreated Session[]     @relation("SessionCreator")
+  memberships     SessionMember[]
+  comments        Comment[]
+  accounts        Account[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+enum SessionMode {
+  NORMAL
+  BBQ
+}
+
+enum SessionStatus {
+  OPEN
+  CLOSED
+}
+
+model Session {
+  id          String        @id @default(cuid())
+  code        String        @unique
+  title       String
+  mode        SessionMode   @default(BBQ)
+  status      SessionStatus @default(OPEN)
+  tipPercent  Int           @default(10)
+  totalAmount Decimal?      @db.Decimal(10, 2)
+  data        Json?
+  createdById String
+  createdBy   User          @relation("SessionCreator", fields: [createdById], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  closedAt    DateTime?
+
+  members     SessionMember[]
+  comments    Comment[]
+
+  @@index([code])
+  @@map("sessions")
+}
+
+model SessionMember {
+  id          String   @id @default(cuid())
+  sessionId   String
+  userId      String
+  displayName String?
+  isDrinker   Boolean  @default(true)
+  amountDue   Decimal? @db.Decimal(10, 2)
+  joinedAt    DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@map("session_members")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("comments")
+}
