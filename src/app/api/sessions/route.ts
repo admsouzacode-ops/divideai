@@ -74,6 +74,8 @@ export async function POST(req: Request) {
         people: [{ id: session.user.id, name: user?.name || "Eu", isDrinker: true }],
         items: [],
         tipPercent: 10,
+        categories: mode === "BBQ" ? ["Carne", "Bebida", "Extra"] : [],
+        categoriesReady: mode === "BBQ",
       },
       members: {
         create: {
