@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft, Copy, Check, Loader2, Users, MessageCircle, Send, Plus, Trash2, Flame, Share2, RefreshCw, Info,
+  ArrowLeft, Copy, Check, Loader2, Users, MessageCircle, Send, Plus, Trash2, Flame, Share2, RefreshCw, Info, Settings, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 
@@ -51,6 +52,7 @@ export default function SalaRoomPage() {
   const code = String(params.code || "").toUpperCase();
   const { data: session, status: authStatus } = useSession();
   const myId = (session?.user as any)?.id as string | undefined;
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,17 +65,20 @@ export default function SalaRoomPage() {
   const [itemName, setItemName] = useState("");
   const [itemAmount, setItemAmount] = useState("");
   const [itemCat, setItemCat] = useState("");
-  const [newCatInput, setNewCatInput] = useState("");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editCats, setEditCats] = useState<string[]>([]);
+  const [newCat, setNewCat] = useState("");
   const [setupCats, setSetupCats] = useState<string[]>([]);
+  const [newSetupCat, setNewSetupCat] = useState("");
 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/sessions/${code}`);
       if (res.status === 403) {
         setJoining(true);
-        const joinRes = await fetch("/api/sessions/join", {
-          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }),
-        });
+        const joinRes = await fetch("/api/sessions/join", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
         if (joinRes.ok) {
           const res2 = await fetch(`/api/sessions/${code}`);
           if (res2.ok) { setRoom(await res2.json()); setError(""); setJoining(false); setLoading(false); return; }
@@ -95,21 +100,29 @@ export default function SalaRoomPage() {
     return () => clearInterval(t);
   }, [load, authStatus]);
 
+  useEffect(() => {
+    if (chatOpen) setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  }, [chatOpen, room?.comments?.length]);
+
   const people = room?.data?.people || room?.members.map((m) => ({ id: m.userId, name: m.name, isDrinker: m.isDrinker })) || [];
   const items = room?.data?.items || [];
   const tipPercent = room?.data?.tipPercent ?? room?.tipPercent ?? 10;
   const { results, total, subtotal, tip } = calcResults(items, people, tipPercent);
-  const roomCategories: string[] =
-    room?.data?.categories && room.data.categories.length > 0
-      ? room.data.categories
-      : room?.mode === "BBQ" ? BBQ_DEFAULT_CATS : [];
+  const roomCategories: string[] = room?.data?.categories && room.data.categories.length > 0 ? room.data.categories : room?.mode === "BBQ" ? BBQ_DEFAULT_CATS : [];
   const needsCategorySetup = room?.mode === "NORMAL" && !room?.data?.categoriesReady;
 
   useEffect(() => {
     if (roomCategories.length > 0 && !itemCat) setItemCat(roomCategories[0]);
   }, [roomCategories.join(","), itemCat]);
 
-  async function saveData(next: { people?: Person[]; items?: BillItem[]; tipPercent?: number; categories?: string[]; categoriesReady?: boolean }) {
+  useEffect(() => {
+    if (room && settingsOpen) {
+      setEditTitle(room.title);
+      setEditCats(room.data?.categories?.length ? [...room.data.categories] : room.mode === "BBQ" ? [...BBQ_DEFAULT_CATS] : []);
+    }
+  }, [settingsOpen, room?.id]);
+
+  async function saveData(next: { people?: Person[]; items?: BillItem[]; tipPercent?: number; categories?: string[]; categoriesReady?: boolean; title?: string }) {
     if (!room) return;
     setSaving(true);
     const data = {
@@ -120,10 +133,9 @@ export default function SalaRoomPage() {
       categoriesReady: next.categoriesReady ?? room?.data?.categoriesReady ?? false,
     };
     const { results: r, total: t } = calcResults(data.items, data.people, data.tipPercent);
-    await fetch(`/api/sessions/${code}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data, tipPercent: data.tipPercent, totalAmount: t, memberAmounts: Object.entries(r).map(([userId, amount]) => ({ userId, amount })) }),
-    });
+    const body: any = { data, tipPercent: data.tipPercent, totalAmount: t, memberAmounts: Object.entries(r).map(([userId, amount]) => ({ userId, amount })) };
+    if (next.title) body.title = next.title;
+    await fetch(`/api/sessions/${code}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     await load();
     setSaving(false);
   }
@@ -139,24 +151,6 @@ export default function SalaRoomPage() {
     setItemName(""); setItemAmount("");
   }
 
-  async function finishCategorySetup() {
-    const cats = setupCats.map((c) => c.trim()).filter(Boolean);
-    if (cats.length === 0) return;
-    await saveData({ categories: cats, categoriesReady: true });
-    setItemCat(cats[0]);
-  }
-
-  function toggleSetupCat(name: string) {
-    setSetupCats((prev) => prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]);
-  }
-
-  function addCustomSetupCat() {
-    const n = newCatInput.trim();
-    if (!n) return;
-    if (!setupCats.includes(n)) setSetupCats((prev) => [...prev, n]);
-    setNewCatInput("");
-  }
-
   async function removeItem(id: string) { await saveData({ items: items.filter((i) => i.id !== id) }); }
 
   async function toggleParticipant(itemId: string, personId: string) {
@@ -169,6 +163,35 @@ export default function SalaRoomPage() {
   }
 
   async function setTip(pct: number) { await saveData({ tipPercent: pct }); }
+
+  async function finishCategorySetup() {
+    const cats = setupCats.map((c) => c.trim()).filter(Boolean);
+    if (cats.length === 0) return;
+    await saveData({ categories: cats, categoriesReady: true });
+    setItemCat(cats[0]);
+  }
+
+  async function saveSettings() {
+    const cats = editCats.map((c) => c.trim()).filter(Boolean);
+    if (cats.length === 0) return;
+    await saveData({ title: editTitle.trim() || room?.title, categories: cats, categoriesReady: true });
+    setItemCat(cats[0]);
+    setSettingsOpen(false);
+  }
+
+  function addEditCat() {
+    const n = newCat.trim();
+    if (!n || editCats.includes(n)) return;
+    setEditCats((prev) => [...prev, n]);
+    setNewCat("");
+  }
+
+  function removeEditCat(name: string) { setEditCats((prev) => prev.filter((c) => c !== name)); }
+
+  async function toggleDrinker(userId: string) {
+    const nextPeople = people.map((p) => p.id === userId ? { ...p, isDrinker: !p.isDrinker } : p);
+    await saveData({ people: nextPeople });
+  }
 
   async function sendComment() {
     if (!comment.trim()) return;
@@ -207,8 +230,10 @@ export default function SalaRoomPage() {
     );
   }
 
+  const unreadHint = room.comments.length;
+
   return (
-    <main className="min-h-dvh px-4 py-6 safe-bottom pb-28">
+    <main className="min-h-dvh px-4 py-6 safe-bottom pb-28 relative">
       <div className="mb-4 flex items-center gap-2">
         <Link href="/sala"><Button variant="ghost" size="icon" className="rounded-full"><ArrowLeft className="h-5 w-5" /></Button></Link>
         <div className="flex-1 min-w-0">
@@ -223,15 +248,14 @@ export default function SalaRoomPage() {
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           </p>
         </div>
+        <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)} className="rounded-full" title="Configurações da sala"><Settings className="h-4 w-4" /></Button>
         <Button variant="outline" size="icon" onClick={load} className="rounded-full"><RefreshCw className="h-4 w-4" /></Button>
         <Button size="icon" onClick={shareWhatsApp} className="rounded-full bg-success hover:bg-success/90"><Share2 className="h-4 w-4" /></Button>
       </div>
 
       <div className="mx-auto max-w-md space-y-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" />Quem está aqui ({room.members.length})</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" />Quem está aqui ({room.members.length})</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {room.members.map((m) => (
               <span key={m.id} className={`rounded-full px-3 py-1 text-sm font-medium ${m.userId === myId ? "bg-primary text-white" : "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200"}`}>
@@ -245,30 +269,24 @@ export default function SalaRoomPage() {
           <Card className="border-2 border-primary/40">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Configure as categorias</CardTitle>
-              <p className="text-sm text-muted-foreground font-normal">
-                Antes de lançar os itens, escolha (ou crie) as categorias desta conta. Ex: comida, bebida, transporte…
-              </p>
+              <p className="text-sm text-muted-foreground font-normal">Escolha ou crie as categorias. Depois altere em ⚙️ Configurações.</p>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-xs font-medium text-muted-foreground">Sugestões — toque para marcar</p>
               <div className="flex flex-wrap gap-2">
                 {SUGGESTED_NORMAL.map((s) => {
                   const on = setupCats.includes(s);
                   return (
-                    <button key={s} type="button" onClick={() => toggleSetupCat(s)}
-                      className={`rounded-full px-3 py-1.5 text-sm font-medium border transition-colors ${on ? "bg-primary text-white border-primary" : "bg-background border-border"}`}>
-                      {s}
-                    </button>
+                    <button key={s} type="button" onClick={() => setSetupCats((prev) => on ? prev.filter((c) => c !== s) : [...prev, s])}
+                      className={`rounded-full px-3 py-1.5 text-sm font-medium border ${on ? "bg-primary text-white border-primary" : "bg-background border-border"}`}>{s}</button>
                   );
                 })}
               </div>
               <div className="flex gap-2">
-                <Input placeholder="Categoria personalizada" value={newCatInput} onChange={(e) => setNewCatInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addCustomSetupCat()} />
-                <Button type="button" variant="secondary" onClick={addCustomSetupCat}><Plus className="h-4 w-4" /></Button>
+                <Input placeholder="Categoria personalizada" value={newSetupCat} onChange={(e) => setNewSetupCat(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { const n = newSetupCat.trim(); if (n && !setupCats.includes(n)) { setSetupCats((p) => [...p, n]); setNewSetupCat(""); } } }} />
+                <Button type="button" variant="secondary" onClick={() => { const n = newSetupCat.trim(); if (n && !setupCats.includes(n)) { setSetupCats((p) => [...p, n]); setNewSetupCat(""); } }}><Plus className="h-4 w-4" /></Button>
               </div>
-              {setupCats.length > 0 && (
-                <p className="text-sm text-muted-foreground">Selecionadas: <strong className="text-foreground">{setupCats.join(", ")}</strong></p>
-              )}
+              {setupCats.length > 0 && <p className="text-sm text-muted-foreground">Selecionadas: <strong className="text-foreground">{setupCats.join(", ")}</strong></p>}
               <Button className="w-full" size="lg" disabled={setupCats.length === 0 || saving} onClick={finishCategorySetup}>
                 {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Salvando...</> : "Continuar para a conta"}
               </Button>
@@ -284,14 +302,14 @@ export default function SalaRoomPage() {
                 <div className="flex flex-wrap gap-2">
                   {TIP_OPTIONS.map((pct) => (
                     <button key={pct} type="button" onClick={() => setTip(pct)}
-                      className={`rounded-full px-4 py-2 text-sm font-semibold border transition-colors ${tipPercent === pct ? "bg-primary text-white border-primary" : "bg-background border-border text-foreground"}`}>
+                      className={`rounded-full px-4 py-2 text-sm font-semibold border ${tipPercent === pct ? "bg-primary text-white border-primary" : "bg-background border-border text-foreground"}`}>
                       {pct === 0 ? "Sem" : `${pct}%`}
                     </button>
                   ))}
                 </div>
                 <div className="flex gap-2 rounded-xl bg-orange-50 dark:bg-orange-950/30 px-3 py-2 text-sm text-muted-foreground">
                   <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
-                  <p><strong className="text-foreground">O que é?</strong> É a taxa de serviço (comum em restaurantes e bares no Brasil, em geral 10%). Divide junto com a conta entre quem participa.</p>
+                  <p><strong className="text-foreground">O que é?</strong> Taxa de serviço (comum em restaurantes, ~10%). Divide junto com a conta.</p>
                 </div>
               </CardContent>
             </Card>
@@ -315,7 +333,7 @@ export default function SalaRoomPage() {
                         const active = item.participants.includes(p.id);
                         return (
                           <button key={p.id} type="button" onClick={() => toggleParticipant(item.id, p.id)}
-                            className={`text-xs rounded-full px-2.5 py-1 border transition-colors ${active ? "bg-primary text-white border-primary" : "bg-transparent text-muted-foreground border-border"}`}>
+                            className={`text-xs rounded-full px-2.5 py-1 border ${active ? "bg-primary text-white border-primary" : "bg-transparent text-muted-foreground border-border"}`}>
                             {p.name}
                           </button>
                         );
@@ -324,13 +342,16 @@ export default function SalaRoomPage() {
                   </div>
                 ))}
                 <div className="rounded-2xl bg-muted/50 p-3 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Categoria do item</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground">Categoria do item</p>
+                    <button type="button" onClick={() => setSettingsOpen(true)} className="text-xs text-primary font-medium flex items-center gap-1">
+                      <Settings className="h-3 w-3" />Editar categorias
+                    </button>
+                  </div>
                   <div className="flex flex-wrap gap-1">
                     {roomCategories.map((c) => (
                       <button key={c} type="button" onClick={() => setItemCat(c)}
-                        className={`text-xs rounded-xl px-3 py-2 font-medium ${itemCat === c ? "bg-primary text-white" : "bg-background border border-border"}`}>
-                        {c}
-                      </button>
+                        className={`text-xs rounded-xl px-3 py-2 font-medium ${itemCat === c ? "bg-primary text-white" : "bg-background border border-border"}`}>{c}</button>
                     ))}
                   </div>
                   <Input placeholder="Nome do item" value={itemName} onChange={(e) => setItemName(e.target.value)} />
@@ -347,9 +368,7 @@ export default function SalaRoomPage() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Quanto cada um paga</CardTitle>
                   <p className="text-2xl font-extrabold text-primary">{formatCurrency(total)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Subtotal {formatCurrency(subtotal)}{tip > 0 ? ` + gorjeta ${tipPercent}% (${formatCurrency(tip)})` : " · sem gorjeta"}
-                  </p>
+                  <p className="text-xs text-muted-foreground">Subtotal {formatCurrency(subtotal)}{tip > 0 ? ` + gorjeta ${tipPercent}% (${formatCurrency(tip)})` : " · sem gorjeta"}</p>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {people.map((p) => (
@@ -363,21 +382,34 @@ export default function SalaRoomPage() {
             )}
           </>
         )}
+      </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2"><MessageCircle className="h-4 w-4" />Comentários</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="max-h-56 overflow-y-auto space-y-2">
-              {room.comments.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Ninguém comentou ainda. Ex: “eu não bebi”</p>
-              )}
+      <button type="button" onClick={() => setChatOpen(true)}
+        className="fixed bottom-6 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-orange-500/40 hover:scale-105 active:scale-95 transition-transform"
+        aria-label="Abrir chat">
+        <MessageCircle className="h-6 w-6" />
+        {unreadHint > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold text-white">
+            {unreadHint > 99 ? "99+" : unreadHint}
+          </span>
+        )}
+      </button>
+
+      {chatOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:items-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setChatOpen(false)} />
+          <div className="relative z-10 flex h-[70vh] w-full flex-col rounded-t-3xl bg-background shadow-2xl sm:m-4 sm:h-[min(560px,80vh)] sm:max-w-md sm:rounded-3xl border border-border">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="flex items-center gap-2"><MessageCircle className="h-5 w-5 text-primary" /><h2 className="font-bold">Chat da sala</h2></div>
+              <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setChatOpen(false)}><X className="h-5 w-5" /></Button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-2 p-4">
+              {room.comments.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Ninguém comentou ainda.<br />Ex: “eu não bebi”</p>}
               {room.comments.map((c) => (
-                <div key={c.id} className={`rounded-2xl px-3 py-2.5 text-sm border ${
+                <div key={c.id} className={`rounded-2xl px-3 py-2.5 text-sm border max-w-[85%] ${
                   c.userId === myId
-                    ? "bg-orange-50 border-orange-200 text-stone-900 ml-4 dark:bg-orange-950/40 dark:border-orange-800 dark:text-orange-50"
-                    : "bg-white border-stone-200 text-stone-800 mr-4 shadow-sm dark:bg-stone-800 dark:border-stone-600 dark:text-stone-100"
+                    ? "bg-orange-50 border-orange-200 text-stone-900 ml-auto dark:bg-orange-950/40 dark:border-orange-800 dark:text-orange-50"
+                    : "bg-white border-stone-200 text-stone-800 mr-auto shadow-sm dark:bg-stone-800 dark:border-stone-600 dark:text-stone-100"
                 }`}>
                   <p className={`font-semibold text-xs mb-0.5 ${c.userId === myId ? "text-orange-700 dark:text-orange-300" : "text-stone-500 dark:text-stone-300"}`}>
                     {c.userName}{c.userId === myId ? " (você)" : ""}
@@ -385,16 +417,72 @@ export default function SalaRoomPage() {
                   <p className="leading-snug">{c.content}</p>
                 </div>
               ))}
+              <div ref={chatEndRef} />
             </div>
-            <div className="flex gap-2">
-              <Input placeholder="Escreva um comentário..." value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendComment()} />
-              <Button onClick={sendComment} disabled={sending || !comment.trim()}>
+            <div className="border-t border-border p-3 flex gap-2">
+              <Input placeholder="Escreva um comentário..." value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendComment()} className="flex-1" />
+              <Button onClick={sendComment} disabled={sending || !comment.trim()} size="icon" className="shrink-0">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      )}
+
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSettingsOpen(false)} />
+          <div className="relative z-10 max-h-[85vh] w-full overflow-y-auto rounded-t-3xl bg-background p-5 shadow-2xl sm:m-4 sm:max-w-md sm:rounded-3xl border border-border">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2"><Settings className="h-5 w-5 text-primary" /><h2 className="text-lg font-bold">Configurações da sala</h2></div>
+              <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setSettingsOpen(false)}><X className="h-5 w-5" /></Button>
+            </div>
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label>Nome da sala</Label>
+                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Nome da sala" />
+              </div>
+              <div className="space-y-2">
+                <Label>Categorias</Label>
+                <p className="text-xs text-muted-foreground">Churrasco e Normal. Adicione ou remova quando quiser.</p>
+                <div className="flex flex-wrap gap-2">
+                  {editCats.map((c) => (
+                    <span key={c} className="inline-flex items-center gap-1 rounded-full bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200 px-3 py-1 text-sm font-medium">
+                      {c}
+                      <button type="button" onClick={() => removeEditCat(c)} className="ml-0.5 rounded-full hover:bg-orange-200 dark:hover:bg-orange-900 p-0.5" aria-label={`Remover ${c}`}><X className="h-3 w-3" /></button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input placeholder="Nova categoria" value={newCat} onChange={(e) => setNewCat(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addEditCat()} />
+                  <Button type="button" variant="secondary" onClick={addEditCat}><Plus className="h-4 w-4" /></Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Pessoas na sala</Label>
+                <p className="text-xs text-muted-foreground">Toque para marcar se bebe (afeta itens de bebida).</p>
+                <div className="space-y-2">
+                  {people.map((p) => (
+                    <button key={p.id} type="button" onClick={() => toggleDrinker(p.id)}
+                      className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-left">
+                      <span className="font-medium text-sm">{p.name}{p.id === myId ? " (você)" : ""}</span>
+                      <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${p.isDrinker !== false ? "bg-primary/15 text-primary" : "bg-stone-100 text-stone-500 dark:bg-stone-800"}`}>
+                        {p.isDrinker !== false ? "Bebida ✓" : "Não bebe"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-xl bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                Código: <span className="font-mono font-bold text-primary">{code}</span> · Modo: {room.mode === "BBQ" ? "Churrasco" : "Normal"}
+              </div>
+              <Button className="w-full" size="lg" onClick={saveSettings} disabled={saving || editCats.length === 0}>
+                {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Salvando...</> : "Salvar configurações"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
