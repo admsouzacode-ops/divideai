@@ -234,24 +234,50 @@ export default function SalaRoomPage() {
 
   return (
     <main className="min-h-dvh px-4 py-6 safe-bottom pb-28 relative">
-      <div className="mb-4 flex items-center gap-2">
-        <Link href="/sala"><Button variant="ghost" size="icon" className="rounded-full"><ArrowLeft className="h-5 w-5" /></Button></Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold truncate flex items-center gap-2">
-            {room.mode === "BBQ" && <Flame className="h-5 w-5 text-primary shrink-0" />}
-            {room.title}
-          </h1>
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <button onClick={copyCode} className="font-mono font-bold text-primary inline-flex items-center gap-1">
-              {code}{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-            </button>
-            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          </p>
+      {/* Header — duas linhas, mais limpo no mobile */}
+      <header className="mb-5 mx-auto max-w-md">
+        <div className="flex items-start gap-1.5">
+          <Link href="/sala" className="mt-0.5 shrink-0">
+            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div className="flex-1 min-w-0 pt-1.5">
+            <div className="flex items-center gap-2">
+              {room.mode === "BBQ" ? (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-950">
+                  <Flame className="h-4 w-4 text-primary" />
+                </span>
+              ) : (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-sm">🧾</span>
+              )}
+              <h1 className="text-lg font-extrabold leading-tight text-foreground line-clamp-2">{room.title}</h1>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)} className="rounded-full h-10 w-10 shrink-0 text-muted-foreground" title="Configurações da sala">
+            <Settings className="h-5 w-5" />
+          </Button>
         </div>
-        <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)} className="rounded-full" title="Configurações da sala"><Settings className="h-4 w-4" /></Button>
-        <Button variant="outline" size="icon" onClick={load} className="rounded-full"><RefreshCw className="h-4 w-4" /></Button>
-        <Button size="icon" onClick={shareWhatsApp} className="rounded-full bg-success hover:bg-success/90"><Share2 className="h-4 w-4" /></Button>
-      </div>
+        <div className="mt-3 flex items-center gap-2 pl-1">
+          <button type="button" onClick={copyCode}
+            className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900 px-3 py-1.5 text-sm font-bold font-mono text-primary active:scale-95 transition-transform">
+            {code}
+            {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 opacity-70" />}
+          </button>
+          <span className="text-xs text-muted-foreground font-medium">
+            {room.mode === "BBQ" ? "Churrasco" : "Normal"}
+            {saving && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
+          </span>
+          <div className="flex-1" />
+          <Button variant="ghost" size="icon" onClick={load} className="rounded-full h-9 w-9 text-muted-foreground" title="Atualizar">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button size="sm" onClick={shareWhatsApp} className="rounded-full bg-success hover:bg-success/90 h-9 px-3 gap-1.5 shadow-sm">
+            <Share2 className="h-4 w-4" />
+            <span className="text-xs font-semibold">Convidar</span>
+          </Button>
+        </div>
+      </header>
 
       <div className="mx-auto max-w-md space-y-4">
         <Card>
