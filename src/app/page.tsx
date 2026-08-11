@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Receipt, History, Crown, Flame, LogIn } from "lucide-react";
+import { Receipt, History, Crown, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
@@ -32,20 +32,13 @@ export default function HomePage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => signOut({ callbackUrl: "/" })}
+              onClick={() => signOut({ callbackUrl: "/login" })}
               className="text-muted-foreground"
             >
               Sair
             </Button>
           </div>
-        ) : (
-          <Link href="/login">
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <LogIn className="h-4 w-4" />
-              Entrar
-            </Button>
-          </Link>
-        )}
+        ) : null}
       </div>
 
       <div className="mb-10 text-center">
