@@ -1,30 +1,58 @@
 "use client";
 
 import Link from "next/link";
-import { Receipt, History, Crown, Flame } from "lucide-react";
+import { Receipt, History, Crown, Flame, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 import { getPreferences } from "@/lib/storage";
 import { OnboardingTour } from "@/components/OnboardingTour";
 
 export default function HomePage() {
-  const [isPro, setIsPro] = useState(false);
+  const { data: session, status } = useSession();
+  const [isProLocal, setIsProLocal] = useState(false);
 
   useEffect(() => {
-    setIsPro(getPreferences().isPro);
+    setIsProLocal(getPreferences().isPro);
   }, []);
+
+  const isPro = (session?.user as any)?.isPro || isProLocal;
 
   return (
     <main className="flex min-h-dvh flex-col items-center px-4 py-8 safe-bottom">
-      {/* Tutorial guiado (só na primeira visita) */}
       <OnboardingTour />
-      {/* Header */}
+
+      <div className="w-full max-w-md flex justify-end mb-4">
+        {status === "loading" ? null : session?.user ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground truncate max-w-[140px]">
+              Olá, {session.user.name?.split(" ")[0]}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="text-muted-foreground"
+            >
+              Sair
+            </Button>
+          </div>
+        ) : (
+          <Link href="/login">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <LogIn className="h-4 w-4" />
+              Entrar
+            </Button>
+          </Link>
+        )}
+      </div>
+
       <div className="mb-10 text-center">
         <div className="mb-3 flex items-center justify-center gap-2">
-          <span className="text-4xl">🔥</span>
+          <span className="text-4xl">🤝</span>
           <h1 className="text-4xl font-extrabold tracking-tight text-primary sm:text-5xl">
-            DivideAí
+            Paga Juntos
           </h1>
         </div>
         <p className="text-muted-foreground text-lg max-w-xs mx-auto">
@@ -32,7 +60,6 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* Main paths */}
       <div className="w-full max-w-md space-y-4">
         <Link href="/normal" className="block">
           <Card className="overflow-hidden transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-2 border-transparent hover:border-primary/30">
@@ -43,9 +70,7 @@ export default function HomePage() {
                 </div>
                 <div>
                   <CardTitle className="text-xl">Dividir Conta</CardTitle>
-                  <CardDescription className="text-base">
-                    Rápido e simples
-                  </CardDescription>
+                  <CardDescription className="text-base">Rápido e simples</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -71,9 +96,7 @@ export default function HomePage() {
                       TOP
                     </span>
                   </CardTitle>
-                  <CardDescription className="text-base">
-                    O diferencial do app
-                  </CardDescription>
+                  <CardDescription className="text-base">O diferencial do app</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -86,7 +109,6 @@ export default function HomePage() {
         </Link>
       </div>
 
-      {/* Secondary actions */}
       <div className="mt-10 flex w-full max-w-md gap-3">
         <Link href="/historico" className="flex-1">
           <Button variant="secondary" className="w-full gap-2" size="lg">
@@ -96,7 +118,11 @@ export default function HomePage() {
         </Link>
         {!isPro && (
           <Link href="/pro" className="flex-1">
-            <Button variant="outline" className="w-full gap-2 border-amber-400 text-amber-700 dark:text-amber-400" size="lg">
+            <Button
+              variant="outline"
+              className="w-full gap-2 border-amber-400 text-amber-700 dark:text-amber-400"
+              size="lg"
+            >
               <Crown className="h-5 w-5" />
               Pro
             </Button>
@@ -104,9 +130,8 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Footer */}
       <p className="mt-auto pt-12 text-center text-xs text-muted-foreground">
-        Feito com 🧡 pro Brasil · v1.0
+        Feito com 🧡 pro Brasil · Paga Juntos
       </p>
     </main>
   );
