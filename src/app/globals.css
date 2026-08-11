@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 33 100% 96%; /* #FFF7ED */
+    --foreground: 24 10% 10%; /* #1C1917 */
+    --card: 0 0% 100%;
+    --card-foreground: 24 10% 10%;
+    --primary: 25 95% 53%; /* #F97316 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 84% 60%; /* #EF4444 */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 25 5% 45%; /* #78716C */
+    --muted-foreground: 25 5% 45%;
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 25 30% 90%;
+    --input: 25 30% 90%;
+    --ring: 25 95% 53%;
+    --radius: 1rem;
+    --success: 142 76% 36%; /* #16A34A */
+  }
+
+  .dark {
+    --background: 24 10% 10%; /* #1C1917 */
+    --foreground: 40 20% 96%;
+    --card: 24 6% 16%; /* #292524 */
+    --card-foreground: 40 20% 96%;
+    --primary: 25 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 84% 60%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 25 5% 55%;
+    --muted-foreground: 25 5% 55%;
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 24 6% 25%;
+    --input: 24 6% 25%;
+    --ring: 25 95% 53%;
+    --success: 142 76% 36%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    min-height: 100dvh;
+  }
+}
+
+/* Custom utilities for the Brazilian warm feel */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
