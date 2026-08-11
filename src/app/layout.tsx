@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
+import { Providers } from "@/components/providers";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -10,14 +10,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "DivideAí - Divida contas de forma justa",
+  title: "Paga Juntos - Divida contas de forma justa",
   description:
-    "O divisor de contas inteligente e brasileiro. Perfeito para churrasco, festas e contas do dia a dia. Compartilhe no WhatsApp!",
+    "O divisor de contas inteligente e brasileiro. Perfeito para churrasco, festas e contas do dia a dia. Compartilhe no WhatsApp e colabore em tempo real!",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "DivideAí",
+    title: "Paga Juntos",
   },
   icons: {
     icon: "/icon-192.png",
@@ -44,11 +44,11 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <Providers>
           <div className="min-h-dvh bg-background text-foreground">
             {children}
           </div>
-        </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );
