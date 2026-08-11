@@ -2,27 +2,42 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, History, Trash2, Flame, Receipt } from "lucide-react";
+import { ArrowLeft, History, Trash2, Flame, Receipt, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
-import { getHistory, clearHistory, getPreferences } from "@/lib/storage";
+import { useSession } from "next-auth/react";
 import type { SplitHistoryItem } from "@/types";
 
 export default function HistoricoPage() {
+  const { data: session } = useSession();
   const [history, setHistory] = useState<SplitHistoryItem[]>([]);
   const [isPro, setIsPro] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setHistory(getHistory());
-    setIsPro(getPreferences().isPro);
-  }, []);
-
-  const handleClear = () => {
-    if (confirm("Tem certeza que deseja limpar todo o histórico?")) {
-      clearHistory();
-      setHistory([]);
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/history");
+        if (res.ok) {
+          const data = await res.json();
+          setHistory(data);
+        }
+        setIsPro(Boolean((session?.user as any)?.isPro));
+      } catch {
+        setHistory([]);
+      } finally {
+        setLoading(false);
+      }
     }
+    load();
+  }, [session]);
+
+  const handleClear = async () => {
+    if (!confirm("Tem certeza que deseja limpar todo o seu histórico?")) return;
+    await fetch("/api/history", { method: "DELETE" });
+    setHistory([]);
   };
 
   return (
@@ -37,7 +52,7 @@ export default function HistoricoPage() {
           <div>
             <h1 className="text-2xl font-bold">Histórico</h1>
             <p className="text-sm text-muted-foreground">
-              {isPro ? "Ilimitado (Pro)" : "Últimas 5 (Free)"}
+              {isPro ? "Ilimitado (Pro)" : "Últimas 5 (Free)"} · só o seu
             </p>
           </div>
         </div>
@@ -50,13 +65,15 @@ export default function HistoricoPage() {
       </div>
 
       <div className="mx-auto max-w-md space-y-3">
-        {history.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : history.length === 0 ? (
           <Card className="py-12">
             <CardContent className="flex flex-col items-center text-center gap-3">
               <History className="h-12 w-12 text-muted-foreground/50" />
-              <p className="text-muted-foreground">
-                Nenhuma divisão salva ainda.
-              </p>
+              <p className="text-muted-foreground">Nenhuma divisão salva ainda.</p>
               <Link href="/">
                 <Button variant="outline">Fazer a primeira divisão</Button>
               </Link>
@@ -82,19 +99,17 @@ export default function HistoricoPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate">{item.title}</p>
                   <p className="text-sm text-muted-foreground">
-                    {item.peopleCount} pessoas ·{" "}
+                    {item.peopleCount} {item.peopleCount === 1 ? "pessoa" : "pessoas"} ·{" "}
                     {new Date(item.createdAt).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
+                      day: "numeric",
                       month: "short",
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-primary">
-                    {formatCurrency(item.total)}
-                  </p>
+                <div className="text-right shrink-0">
+                  <p className="font-bold text-primary">{formatCurrency(item.total)}</p>
                   <p className="text-xs text-muted-foreground capitalize">
                     {item.mode === "bbq" ? "Churrasco" : "Normal"}
                   </p>
@@ -102,21 +117,6 @@ export default function HistoricoPage() {
               </CardContent>
             </Card>
           ))
-        )}
-
-        {!isPro && history.length >= 5 && (
-          <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
-            <CardContent className="p-4 text-center">
-              <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
-                Limite do plano Free atingido. Faça upgrade para histórico ilimitado!
-              </p>
-              <Link href="/pro">
-                <Button size="sm" className="bg-amber-500 hover:bg-amber-600">
-                  Virar Pro
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
         )}
       </div>
     </main>
