@@ -4,9 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { ArrowLeft, Eye, EyeOff, Loader2, Check } from "lucide-react";
+import { Eye, EyeOff, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -59,28 +59,15 @@ export default function CadastroPage() {
   };
 
   return (
-    <main className="min-h-dvh flex flex-col px-4 py-6 safe-bottom">
-      <div className="mb-8 flex items-center gap-3">
-        <Link href="/">
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <h1 className="text-xl font-bold">Criar conta</h1>
-      </div>
-
+    <main className="min-h-dvh flex flex-col px-4 py-8 safe-bottom">
       <div className="mx-auto w-full max-w-md flex-1 flex flex-col justify-center">
         <div className="text-center mb-8">
-          <div className="text-4xl mb-2">🤝</div>
-          <h2 className="text-2xl font-extrabold text-primary">Paga Juntos</h2>
-          <p className="text-muted-foreground mt-1">Crie sua conta grátis</p>
+          <div className="text-5xl mb-3">🤝</div>
+          <h1 className="text-3xl font-extrabold text-primary">Paga Juntos</h1>
         </div>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Cadastro</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome</Label>
@@ -128,7 +115,11 @@ export default function CadastroPage() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
                   </button>
                 </div>
               </div>
