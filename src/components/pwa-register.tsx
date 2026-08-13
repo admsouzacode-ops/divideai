@@ -9,13 +9,20 @@ export function PwaRegister() {
 
     const register = async () => {
       try {
-        await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      } catch {
-        // silencioso em dev / ambientes sem SW
+        const reg = await navigator.serviceWorker.register("/sw.js", {
+          scope: "/",
+        });
+        reg.update().catch(() => {});
+      } catch (err) {
+        console.warn("[PWA] Falha ao registrar service worker:", err);
       }
     };
 
-    register();
+    if (document.readyState === "complete") {
+      register();
+    } else {
+      window.addEventListener("load", register, { once: true });
+    }
   }, []);
 
   return null;

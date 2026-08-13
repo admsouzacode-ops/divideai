@@ -1,13 +1,18 @@
 {
+  "id": "/",
   "name": "Paga Juntos",
   "short_name": "Paga Juntos",
   "description": "Divida contas de forma justa e fácil. Ideal para churrasco!",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#FFF7ED",
   "theme_color": "#F97316",
   "orientation": "portrait",
   "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["finance", "utilities", "lifestyle"],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -26,6 +31,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
