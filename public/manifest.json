@@ -1,24 +1,31 @@
 {
-  "name": "DivideAí",
-  "short_name": "DivideAí",
+  "name": "Paga Juntos",
+  "short_name": "Paga Juntos",
   "description": "Divida contas de forma justa e fácil. Ideal para churrasco!",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FFF7ED",
   "theme_color": "#F97316",
   "orientation": "portrait",
+  "lang": "pt-BR",
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
