@@ -13,6 +13,7 @@ import {
   History,
   Ban,
   Share2,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,17 +34,17 @@ const FEATURES = [
   {
     icon: MessageCircle,
     title: "Comentários em tempo real",
-    desc: "“Eu não bebi”, “a picanha foi 1,2kg” — alinhamento sem briga no grupo.",
+    desc: "Alinhamento sem briga no grupo.",
   },
   {
     icon: History,
     title: "Histórico ilimitado",
-    desc: "Todas as suas divisões salvas na sua conta, só você vê.",
+    desc: "Todas as suas divisões salvas na sua conta.",
   },
   {
     icon: Share2,
     title: "Exportar e compartilhar",
-    desc: "Resultado pronto pro WhatsApp e exportação (PDF/imagem).",
+    desc: "Resultado pronto pro WhatsApp.",
   },
   {
     icon: Ban,
@@ -53,21 +54,69 @@ const FEATURES = [
 ];
 
 export default function ProPage() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const [isPro, setIsPro] = useState(false);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setIsPro(getPreferences().isPro || Boolean((session?.user as any)?.isPro));
+    const prefs = getPreferences();
+    const sessionPro = Boolean((session?.user as any)?.isPro);
+    const localPro =
+      prefs.isPro &&
+      (!prefs.proExpiresAt || new Date(prefs.proExpiresAt) > new Date());
+    setIsPro(sessionPro || localPro);
+    setExpiresAt(
+      (session?.user as any)?.proExpiresAt || prefs.proExpiresAt || null
+    );
   }, [session]);
 
-  const handlePurchase = async () => {
+  const handleSubscribe = async () => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setProStatus(true);
-    setIsPro(true);
-    setLoading(false);
-    alert("🎉 Parabéns! Você agora é Pro. Obrigado pelo apoio!");
+    try {
+      const res = await fetch("/api/pro/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "semestral" }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setProStatus(true, data.proExpiresAt);
+        setIsPro(true);
+        setExpiresAt(data.proExpiresAt);
+        await update?.();
+      } else {
+        const expires = new Date();
+        expires.setMonth(expires.getMonth() + 6);
+        const iso = expires.toISOString();
+        setProStatus(true, iso);
+        setIsPro(true);
+        setExpiresAt(iso);
+      }
+    } catch {
+      const expires = new Date();
+      expires.setMonth(expires.getMonth() + 6);
+      const iso = expires.toISOString();
+      setProStatus(true, iso);
+      setIsPro(true);
+      setExpiresAt(iso);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return null;
+    try {
+      return new Date(iso).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+    } catch {
+      return null;
+    }
   };
 
   if (isPro) {
@@ -82,6 +131,12 @@ export default function ProPage() {
             Obrigado por apoiar o Paga Juntos. Aproveite salas compartilhadas,
             histórico ilimitado e tudo sem anúncios.
           </p>
+          {expiresAt && (
+            <p className="text-sm text-muted-foreground flex items-center justify-center gap-1.5">
+              <Calendar className="h-4 w-4" />
+              Válido até {formatDate(expiresAt)}
+            </p>
+          )}
           <Link href="/">
             <Button size="lg" className="mt-4">
               Voltar ao app
@@ -117,8 +172,10 @@ export default function ProPage() {
 
         <Card className="border-2 border-amber-400/50 overflow-hidden">
           <div className="bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-3 text-center">
-            <p className="text-white font-bold text-lg">Compra única · R$ 12,90</p>
-            <p className="text-white/90 text-sm">Sem mensalidade · para sempre</p>
+            <p className="text-white font-bold text-lg">R$ 12,90</p>
+            <p className="text-white/90 text-sm">
+              a cada 6 meses · cancele quando quiser
+            </p>
           </div>
           <CardContent className="pt-5 space-y-5">
             {FEATURES.map((f) => (
@@ -147,7 +204,7 @@ export default function ProPage() {
         <Button
           size="xl"
           className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-orange-500/30 gap-2"
-          onClick={handlePurchase}
+          onClick={handleSubscribe}
           disabled={loading}
         >
           {loading ? (
@@ -155,13 +212,13 @@ export default function ProPage() {
           ) : (
             <>
               <Sparkles className="h-5 w-5" />
-              Comprar Pro · R$ 12,90
+              Assinar Pro · R$ 12,90 / 6 meses
             </>
           )}
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">
-          Pagamento seguro via Mercado Pago (mockado nesta versão).
+          Renovação a cada 6 meses. Pagamento via Mercado Pago (em breve integração real).
         </p>
       </div>
     </main>
