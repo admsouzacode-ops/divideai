@@ -9,7 +9,7 @@ export type BillItem = {
   name: string;
   amount: number;
   category: "carne" | "bebida" | "extra";
-  participants: string[]; // person ids
+  participants: string[];
 };
 
 export type NormalSplit = {
@@ -31,7 +31,7 @@ export type BBQSplit = {
   people: Person[];
   tipPercent: number;
   tipCustom?: number;
-  results: Record<string, number>; // personId -> amount
+  results: Record<string, number>;
   totalWithTip: number;
 };
 
@@ -47,6 +47,7 @@ export type SplitHistoryItem = {
 
 export type UserPreferences = {
   isPro: boolean;
+  proExpiresAt?: string | null;
   theme: "light" | "dark" | "system";
   historyLimit: number;
 };
