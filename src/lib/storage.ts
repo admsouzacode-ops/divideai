@@ -12,7 +12,13 @@ export function getPreferences(): UserPreferences {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
     if (raw) {
-      return JSON.parse(raw) as UserPreferences;
+      const prefs = JSON.parse(raw) as UserPreferences;
+      if (prefs.isPro && prefs.proExpiresAt) {
+        if (new Date(prefs.proExpiresAt) <= new Date()) {
+          prefs.isPro = false;
+        }
+      }
+      return prefs;
     }
   } catch {
     // ignore
@@ -25,7 +31,6 @@ export function savePreferences(prefs: UserPreferences) {
   localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
 }
 
-/** Salva no banco (por usuário logado). Não usa localStorage compartilhado. */
 export async function saveToHistory(
   item: Omit<SplitHistoryItem, "id" | "createdAt">
 ) {
@@ -40,7 +45,11 @@ export async function saveToHistory(
   }
 }
 
-export function setProStatus(isPro: boolean) {
+export function setProStatus(isPro: boolean, proExpiresAt?: string | null) {
   const prefs = getPreferences();
-  savePreferences({ ...prefs, isPro });
+  savePreferences({
+    ...prefs,
+    isPro,
+    proExpiresAt: proExpiresAt ?? prefs.proExpiresAt ?? null,
+  });
 }

@@ -3,6 +3,12 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 
+function isProActive(isPro: boolean, proExpiresAt: Date | null | undefined): boolean {
+  if (!isPro) return false;
+  if (!proExpiresAt) return true;
+  return proExpiresAt > new Date();
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -33,11 +39,14 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Email ou senha incorretos");
         }
 
+        const active = isProActive(user.isPro, user.proExpiresAt);
+
         return {
           id: user.id,
           name: user.name,
           email: user.email,
-          isPro: user.isPro,
+          isPro: active,
+          proExpiresAt: user.proExpiresAt?.toISOString() ?? null,
         };
       },
     }),
@@ -51,17 +60,35 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.isPro = (user as any).isPro ?? false;
+        token.proExpiresAt = (user as any).proExpiresAt ?? null;
       }
+
+      if (trigger === "update" && token.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { isPro: true, proExpiresAt: true },
+          });
+          if (dbUser) {
+            token.isPro = isProActive(dbUser.isPro, dbUser.proExpiresAt);
+            token.proExpiresAt = dbUser.proExpiresAt?.toISOString() ?? null;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).isPro = token.isPro;
+        (session.user as any).proExpiresAt = token.proExpiresAt;
       }
       return session;
     },
