@@ -13,13 +13,13 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { isPro: true },
+    select: { isPro: true, proExpiresAt: true },
   });
 
   const history = await prisma.splitHistory.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
-    take: user?.isPro ? 100 : FREE_LIMIT,
+    take: (user?.isPro && (!user.proExpiresAt || user.proExpiresAt > new Date())) ? 100 : FREE_LIMIT,
   });
 
   return NextResponse.json(
@@ -50,10 +50,11 @@ export async function POST(req: Request) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { isPro: true },
+    select: { isPro: true, proExpiresAt: true },
   });
 
-  if (!user?.isPro) {
+  const proActive = Boolean(user?.isPro && (!user.proExpiresAt || user.proExpiresAt > new Date()));
+  if (!proActive) {
     const count = await prisma.splitHistory.count({
       where: { userId: session.user.id },
     });
