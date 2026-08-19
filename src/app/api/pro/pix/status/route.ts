@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   if (
     paymentId.startsWith("mock_") &&
     req.nextUrl.searchParams.get("mock_confirm") === "1" &&
-    !process.env.MERCADOPAGO_ACCESS_TOKEN
+    !(process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN)
   ) {
     const expires = new Date();
     expires.setMonth(expires.getMonth() + 6);

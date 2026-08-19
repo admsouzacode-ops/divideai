@@ -1,5 +1,9 @@
 /**
  * Mercado Pago PIX helpers
+ * Aceita os nomes de env mais comuns:
+ * - MERCADO_PAGO_ACCESS_TOKEN (padrão de muitos apps)
+ * - MERCADOPAGO_ACCESS_TOKEN
+ * - MP_ACCESS_TOKEN
  */
 
 const MP_API = "https://api.mercadopago.com";
@@ -18,7 +22,12 @@ export type PixPaymentResult = {
 };
 
 function getAccessToken(): string | null {
-  return process.env.MERCADOPAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || null;
+  return (
+    process.env.MERCADO_PAGO_ACCESS_TOKEN ||
+    process.env.MERCADOPAGO_ACCESS_TOKEN ||
+    process.env.MP_ACCESS_TOKEN ||
+    null
+  );
 }
 
 export function isMercadoPagoConfigured(): boolean {
